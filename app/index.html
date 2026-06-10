@@ -1,45 +1,161 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>AGPRS Dashboard</title>
+    <title>AGPRS Dashboard</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+    <script src="config.js"></script>
+
+    <style>
+        body{
+            font-family:Arial;
+            margin:40px;
+            background:#f5f5f5;
+        }
+
+        .card{
+            background:white;
+            padding:20px;
+            margin-bottom:15px;
+            border-radius:10px;
+            box-shadow:0 0 5px rgba(0,0,0,0.1);
+        }
+
+        h1{
+            color:#1f4e79;
+        }
+
+        table{
+            width:100%;
+            border-collapse:collapse;
+        }
+
+        th,td{
+            border:1px solid #ddd;
+            padding:10px;
+            text-align:left;
+        }
+
+        input{
+            padding:8px;
+            width:150px;
+        }
+
+        button{
+            padding:8px 15px;
+            cursor:pointer;
+        }
+    </style>
 </head>
+
 <body>
 
 <h1>AGPRS Dashboard</h1>
 
-<h2>Portfolio Summary</h2>
+<div class="card">
+    <h3>Portfolio Summary</h3>
 
-<p>Total Portfolio Value: ₹64,573</p>
-<p>Cash Available: ₹10,000</p>
+    <p>Invested Value : ₹ <span id="invested">0</span></p>
+    <p>Current Value : ₹ <span id="current">0</span></p>
+    <p>Cash Available : ₹ <span id="cash">0</span></p>
+    <p>Total Portfolio : ₹ <span id="total">0</span></p>
+    <p>Gain / Loss : ₹ <span id="gain">0</span></p>
 
-<h2>Current Holdings</h2>
+    <input type="number" id="cashInput" placeholder="Enter Cash">
 
-<table border="1">
-<tr>
-<th>Symbol</th>
-<th>Quantity</th>
-<th>Average Cost</th>
-</tr>
+    <button onclick="updateCash()">
+        Update Cash
+    </button>
+</div>
 
-<tr>
-<td>RELIANCE</td>
-<td>10</td>
-<td>1298.60</td>
-</tr>
+<div class="card">
+    <h3>Holdings</h3>
 
-<tr>
-<td>WIPRO</td>
-<td>200</td>
-<td>198.57</td>
-</tr>
+    <table id="holdingTable">
+        <thead>
+            <tr>
+                <th>Symbol</th>
+                <th>Invested</th>
+                <th>Current</th>
+                <th>Gain/Loss</th>
+            </tr>
+        </thead>
 
-<tr>
-<td>TATAMOTORS</td>
-<td>5</td>
-<td>398.30</td>
-</tr>
+        <tbody></tbody>
+    </table>
+</div>
 
-</table>
+<script>
+
+async function loadDashboard(){
+
+    let { data } = await supabaseClient
+        .from('portfolio_summary')
+        .select('*')
+        .order('snapshot_time',{ascending:false})
+        .limit(1);
+
+    if(data && data.length>0){
+
+        let row = data[0];
+
+        document.getElementById('invested').innerText =
+            row.invested_value;
+
+        document.getElementById('current').innerText =
+            row.current_value;
+
+        document.getElementById('cash').innerText =
+            row.cash_value;
+
+        document.getElementById('total').innerText =
+            row.total_portfolio_value;
+
+        document.getElementById('gain').innerText =
+            row.unrealized_gain;
+    }
+
+    let holdings = await supabaseClient
+        .from('stock_performance')
+        .select('*');
+
+    let tbody =
+        document.querySelector('#holdingTable tbody');
+
+    tbody.innerHTML='';
+
+    holdings.data.forEach(item=>{
+
+        tbody.innerHTML += `
+        <tr>
+            <td>${item.symbol}</td>
+            <td>${item.invested_value}</td>
+            <td>${item.current_value}</td>
+            <td>${item.unrealized_gain}</td>
+        </tr>`;
+    });
+}
+
+async function updateCash(){
+
+    let cash =
+        document.getElementById('cashInput').value;
+
+    await supabaseClient
+        .from('portfolio_summary')
+        .update({
+            cash_value:cash
+        })
+        .eq('id',1);
+
+    alert("Cash Updated");
+
+    loadDashboard();
+}
+
+loadDashboard();
+
+</script>
 
 </body>
 </html>
